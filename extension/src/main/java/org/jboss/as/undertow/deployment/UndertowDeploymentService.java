@@ -34,6 +34,7 @@ import io.undertow.servlet.api.DeploymentManager;
 import io.undertow.servlet.api.ThreadSetupAction;
 import io.undertow.servlet.core.CompositeThreadSetupAction;
 import io.undertow.servlet.core.ContextClassLoaderSetupAction;
+import org.jboss.as.clustering.web.DistributedCacheManagerFactory;
 import org.jboss.as.security.plugins.SecurityDomainContext;
 import org.jboss.as.undertow.extension.Host;
 import org.jboss.as.undertow.extension.ServletContainerService;
@@ -57,6 +58,8 @@ public class UndertowDeploymentService implements Service<UndertowDeploymentServ
     private final InjectedValue<ServletContainerService> container = new InjectedValue<>();
     private final WebInjectionContainer webInjectionContainer;
     private final InjectedValue<SecurityDomainContext> securityDomainContextValue = new InjectedValue<SecurityDomainContext>();
+
+    private final InjectedValue<DistributedCacheManagerFactory> distributedCacheManagerFactoryInjectedValue = new InjectedValue<DistributedCacheManagerFactory>();
     private volatile DeploymentManager deploymentManager;
     //private final String hostName;
     private final InjectedValue<Host> host = new InjectedValue<>();
@@ -68,7 +71,11 @@ public class UndertowDeploymentService implements Service<UndertowDeploymentServ
 
     @Override
     public void start(final StartContext startContext) throws StartException {
-        //TODO Darran, check this!
+        if(distributedCacheManagerFactoryInjectedValue.getOptionalValue() != null) {
+        //    deploymentInfo.setSessionManager(new DistributableSessionManager<OutgoingDistributableSessionData>(this.distributedCacheManagerFactoryInjectedValue.getValue(), metaData, new ClassLoaderAwareClassResolver(resolver, module.getClassLoader())));
+        }
+
+        //TODO Darren, check this!
         final List<ThreadSetupAction> setup = new ArrayList<ThreadSetupAction>();
         setup.add(new ContextClassLoaderSetupAction(deploymentInfo.getClassLoader()));
         setup.addAll(deploymentInfo.getThreadSetupActions());
@@ -133,5 +140,9 @@ public class UndertowDeploymentService implements Service<UndertowDeploymentServ
                 return container.getValue().lookupSecurePort("default");
             }
         };
+    }
+
+    public InjectedValue<DistributedCacheManagerFactory> getDistributedCacheManagerFactoryInjectedValue() {
+        return distributedCacheManagerFactoryInjectedValue;
     }
 }

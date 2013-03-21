@@ -239,15 +239,9 @@ public class UndertowDeploymentProcessor implements DeploymentUnitProcessor {
         String securityDomain = metaDataSecurityDomain == null ? SecurityConstants.DEFAULT_APPLICATION_POLICY : SecurityUtil
                 .unprefixSecurityDomain(metaDataSecurityDomain);
 
-<<<<<<< Updated upstream
             final ServiceName deploymentServiceName = UndertowService.deploymentServiceName(hostName, deploymentInfo.getContextPath());
             final ServiceName hostServiceName = UndertowService.virtualHostName(defaultServer, hostName);
-            final UndertowDeploymentService service = new UndertowDeploymentService(deploymentInfo, injectionContainer);
-=======
-            final ServiceName deploymentServiceName = UndertowServices.deploymentServiceName(hostName,deploymentInfo.getContextPath());
-            final ServiceName hostServiceName = UndertowServices.virtualHostName(defaultServer,hostName);
             final UndertowDeploymentService service = new UndertowDeploymentService(deploymentInfo, injectionContainer, module, warMetaData.getMergedJBossWebMetaData());
->>>>>>> Stashed changes
             final ServiceBuilder<UndertowDeploymentService> builder = serviceTarget.addService(deploymentServiceName, service)
                     .addDependencies(dependentComponents)
                     .addDependency(UndertowService.SERVLET_CONTAINER.append(defaultContainer), ServletContainerService.class, service.getContainer())

@@ -2,12 +2,9 @@ package org.jboss.as.undertow.extension;
 
 import java.util.List;
 
-<<<<<<< Updated upstream
-=======
 import io.undertow.Version;
 import org.jboss.as.clustering.web.DistributedCacheManagerFactory;
 import org.jboss.as.clustering.web.DistributedCacheManagerFactoryService;
->>>>>>> Stashed changes
 import org.jboss.as.controller.AbstractBoottimeAddStepHandler;
 import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.OperationContext;
@@ -111,9 +108,6 @@ class UndertowSubsystemAdd extends AbstractBoottimeAddStepHandler {
             }
         }, OperationContext.Stage.RUNTIME);
 
-
-<<<<<<< Updated upstream
-=======
         UndertowLogger.ROOT_LOGGER.serverStarting(Version.getVersionString());
 
         final DistributedCacheManagerFactory factory = new DistributedCacheManagerFactoryService().getValue();
@@ -123,7 +117,6 @@ class UndertowSubsystemAdd extends AbstractBoottimeAddStepHandler {
                     .install());
             newControllers.addAll(factory.installServices(context.getServiceTarget()));
         }
->>>>>>> Stashed changes
     }
 
 }

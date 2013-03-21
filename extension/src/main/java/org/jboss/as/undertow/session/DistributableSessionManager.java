@@ -48,7 +48,7 @@ import io.undertow.server.session.Session;
 import io.undertow.server.session.SessionConfig;
 import io.undertow.server.session.SessionIdGenerator;
 import io.undertow.server.session.SessionListener;
-import io.undertow.servlet.spec.ServletContextImpl;
+import io.undertow.servlet.api.Deployment;
 import org.jboss.as.clustering.web.BatchingManager;
 import org.jboss.as.clustering.web.ClusteringNotSupportedException;
 import org.jboss.as.clustering.web.DistributableSessionMetadata;
@@ -138,17 +138,20 @@ public class DistributableSessionManager<O extends OutgoingDistributableSessionD
      */
     private final ConcurrentMap<String, ClusteredSession<O>> embryonicSessions = new ConcurrentHashMap<String, ClusteredSession<O>>();
 
-    private final ServletContextImpl servletContext;
-
     private final SessionIdGenerator sessionIdGenerator = new SecureRandomSessionIdGenerator();
 
     private final String jvmRoute = "route1"; //fixme
 
+    private final String contextPath;
+
+    private final ClassLoader classLoader;
+
     private static final Logger log = Logger.getLogger(DistributableSessionManager.class);
 
-    public DistributableSessionManager(DistributedCacheManagerFactory factory, JBossWebMetaData metaData, ClassResolver resolver, final ServletContextImpl servletContext) throws ClusteringNotSupportedException {
+    public DistributableSessionManager(DistributedCacheManagerFactory factory, JBossWebMetaData metaData, ClassResolver resolver, final String contextPath, final ClassLoader classLoader) {
         super(metaData);
-        this.servletContext = servletContext;
+        this.contextPath = contextPath;
+        this.classLoader = classLoader;
 
         PassivationConfig passivationConfig = metaData.getPassivationConfig();
         Boolean useSessionPassivation = (passivationConfig != null) ? passivationConfig.getUseSessionPassivation() : null;
@@ -170,7 +173,11 @@ public class DistributableSessionManager<O extends OutgoingDistributableSessionD
 
         this.notificationPolicy = this.createClusteredSessionNotificationPolicy();
         this.resolver = resolver;
-        this.distributedCacheManager = factory.getDistributedCacheManager(this);
+        try {
+            this.distributedCacheManager = factory.getDistributedCacheManager(this);
+        } catch (ClusteringNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
 
         this.persistence = distributedCacheManager.isPersistenceEnabled();
     }
@@ -216,26 +223,26 @@ public class DistributableSessionManager<O extends OutgoingDistributableSessionD
      * Instantiate a SnapshotManager and ClusteredSessionValve and add the valve to our parent Context's pipeline. Add a
      * JvmRouteValve and BatchReplicationClusteredSessionValve if needed.
      */
-    public HttpHandler wrapHandlers(final HttpHandler handler) {
+    public HttpHandler wrapHandlers(final HttpHandler handler, final Deployment deployment) {
         HttpHandler current = handler;
         current = new LockingHandler(this.valveLock, current);
 
         if (this.getUseJK()) {
-            current = new JvmRouteHandler(this, current, servletContext);
+            current = new JvmRouteHandler(this, current, deployment);
         }
 
         // Add clustered session valve
-        current = new ClusteredSessionHandler(servletContext, this, null, current);
+        current = new ClusteredSessionHandler(deployment, this, null, current);
         return current;
     }
 
     protected SnapshotManager createSnapshotManager() {
-        String ctxPath = this.servletContext.getContextPath();
+        String ctxPath = contextPath;
         switch (this.getSnapshotMode()) {
             case INTERVAL: {
                 int interval = this.getSnapshotInterval();
                 if (interval > 0) {
-                    return new IntervalSnapshotManager(this, servletContext.getClassLoader(), ctxPath, interval);
+                    return new IntervalSnapshotManager(this, classLoader, ctxPath, interval);
                 }
                 UndertowLogger.WEB_SESSION_LOGGER.invalidSnapshotInterval();
             }

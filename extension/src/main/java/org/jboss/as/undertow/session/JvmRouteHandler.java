@@ -29,8 +29,8 @@ import javax.servlet.http.HttpSession;
 
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
+import io.undertow.servlet.api.Deployment;
 import io.undertow.servlet.spec.HttpServletRequestImpl;
-import io.undertow.servlet.spec.ServletContextImpl;
 import org.jboss.as.clustering.web.OutgoingDistributableSessionData;
 import org.jboss.logging.Logger;
 
@@ -39,12 +39,11 @@ import org.jboss.logging.Logger;
  * of id.jvmRoute where jvmRoute is used by JK module to determine sticky session during load balancing. Checks for failover by
  * matching session and request jvmRoute to the session manager's, updating the session and session cookie if a failover is
  * detected.
- *
+ * <p/>
  * This handler is inserted in the pipeline only when mod_jk is configured.
  *
  * @author Ben Wang
  * @author Brian Stansberry
- *
  * @version $Revision: 108925 $
  */
 public class JvmRouteHandler implements HttpHandler {
@@ -57,17 +56,16 @@ public class JvmRouteHandler implements HttpHandler {
 
     private final HttpHandler next;
 
-    private final ServletContextImpl servletContext;
+    private final Deployment deployment;
 
     /**
      * Create a new handler.
-     *
      */
-    public JvmRouteHandler(SessionManager manager, final HttpHandler next, final ServletContextImpl servletContext) {
+    public JvmRouteHandler(SessionManager manager, final HttpHandler next, final Deployment deployment) {
         super();
         this.manager = manager;
         this.next = next;
-        this.servletContext = servletContext;
+        this.deployment = deployment;
     }
 
     public String getInfo() {
@@ -89,7 +87,7 @@ public class JvmRouteHandler implements HttpHandler {
 
     public void checkJvmRoute(final HttpServerExchange exchange) throws IOException, ServletException {
 
-        String requestedId =servletContext.getSessionCookieConfig().findSessionId(exchange);
+        String requestedId = deployment.getServletContext().getSessionCookieConfig().findSessionId(exchange);
         HttpServletRequestImpl req = (HttpServletRequestImpl) exchange.getAttachment(HttpServletRequestImpl.ATTACHMENT_KEY);
         HttpSession session = req.getSession(false);
         if (session != null) {
@@ -151,7 +149,7 @@ public class JvmRouteHandler implements HttpHandler {
 
             /* Change the sessionid cookie if needed */
             if (newId != null) {
-                servletContext.getSessionCookieConfig().setSessionId(exchange, newId);
+                deployment.getServletContext().getSessionCookieConfig().setSessionId(exchange, newId);
             }
         }
     }
@@ -163,7 +161,7 @@ public class JvmRouteHandler implements HttpHandler {
      * @param newId new session id the session object should have
      */
     private void resetSessionId(HttpServerExchange exchange, String oldId, String newId) throws IOException {
-        ClusteredSession<? extends OutgoingDistributableSessionData> session = (ClusteredSession<?>) manager.getSession(exchange, servletContext.getSessionCookieConfig());
+        ClusteredSession<? extends OutgoingDistributableSessionData> session = (ClusteredSession<?>) manager.getSession(exchange, deployment.getServletContext().getSessionCookieConfig());
         // change session id with the new one using local jvmRoute.
         if (session != null) {
             session.resetIdWithRouteInfo(newId);

@@ -28,7 +28,7 @@ import javax.servlet.ServletException;
 
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
-import io.undertow.servlet.spec.ServletContextImpl;
+import io.undertow.servlet.api.Deployment;
 import org.jboss.as.clustering.web.BatchingManager;
 import org.jboss.as.undertow.extension.UndertowMessages;
 import org.jboss.logging.Logger;
@@ -46,7 +46,7 @@ public class ClusteredSessionHandler implements HttpHandler {
 
     protected static final Logger log = Logger.getLogger(ClusteredSessionHandler.class);
 
-    private final ServletContextImpl servletContext;
+    private final Deployment deployment;
 
     private final SessionManager manager;
 
@@ -57,8 +57,8 @@ public class ClusteredSessionHandler implements HttpHandler {
     /**
      * Create a new Valve.
      */
-    public ClusteredSessionHandler(final ServletContextImpl servletContext, SessionManager manager, BatchingManager tm, final HttpHandler next) {
-        this.servletContext = servletContext;
+    public ClusteredSessionHandler(final Deployment deployment, SessionManager manager, BatchingManager tm, final HttpHandler next) {
+        this.deployment = deployment;
         this.next = next;
         assert manager != null : UndertowMessages.MESSAGES.nullParamter("manager");
 
@@ -68,9 +68,8 @@ public class ClusteredSessionHandler implements HttpHandler {
 
 
     /**
-     *  Our session
+     * Our session
      * replication mechanism replicates the session after request got through the servlet code.
-     *
      */
     @Override
     public void handleRequest(final HttpServerExchange exchange) throws Exception {
@@ -87,9 +86,9 @@ public class ClusteredSessionHandler implements HttpHandler {
             // Workaround to JBAS-5735. Ensure we get the session from the manager
             // rather than a cached ref from the Request.
 
-            String requestedId = servletContext.getSessionCookieConfig().findSessionId(exchange);
+            String requestedId = deployment.getServletContext().getSessionCookieConfig().findSessionId(exchange);
             if (requestedId != null) {
-                manager.getSession(exchange, servletContext.getSessionCookieConfig());
+                manager.getSession(exchange, deployment.getServletContext().getSessionCookieConfig());
             }
 
             // let the servlet invocation go through
@@ -132,7 +131,7 @@ public class ClusteredSessionHandler implements HttpHandler {
         return started;
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private void handleCrossContextSessions(SessionReplicationContext ctx) {
         // Genericized code below crashes some Sun JDK compilers; see
         // http://www.jboss.org/index.html?module=bb&op=viewtopic&t=154175
@@ -151,7 +150,7 @@ public class ClusteredSessionHandler implements HttpHandler {
         // So, use this non-genericized code instead
         Map sessions = ctx.getCrossContextSessions();
         if (sessions != null && sessions.size() > 0) {
-            for (Iterator it = sessions.entrySet().iterator(); it.hasNext();) {
+            for (Iterator it = sessions.entrySet().iterator(); it.hasNext(); ) {
                 Map.Entry entry = (Map.Entry) it.next();
                 ((SnapshotManager) entry.getValue()).snapshot((ClusteredSession) entry.getKey());
             }
